@@ -5,52 +5,53 @@ import { Container, Search, ArquivosLocais, Arquivo,SContent ,SearchIcon, Enviar
 import { Entypo } from '@expo/vector-icons'; 
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system'
-import { Audio  } from 'expo-av';
-import api from "../services/api";
 import * as Network from 'expo-network';
-
-
-
-const key = ((Math.random() + 1).toString(36).substring(7))
-
+import SocketIOClient from 'socket.io-client';
 
 export function Home (){
     const [documents, setDocuments] = useState<any>([])
     const [text, onChangeText] = React.useState('');
     const [musicasProcuradas, setMusicasProcuradas] = useState<any>([])
+    const [socket, setSocketOn] = useState(null)
     const [ip, setIp] = React.useState('');
-    useEffect(()=>{
+    const [novaMensagem, setNovaMensagem] = React.useState(false);
+    useEffect(() => {
+        setSocketOn(SocketIOClient('http://172.20.10.10:3333/', {
+            transports: ['websocket']
+        }));
         async function getIp(){
-             const ipEffect = await Network.getIpAddressAsync();
-             setIp(ipEffect)
-        }   
+            const ip = await Network.getIpAddressAsync()
+            setIp(ip)
+        }
         getIp()
-    })
+    },[])
 
-    async function download(item){
-        try {
-            const result =  await api.get(`/musics`, {
-                params: {
-                  id: item.id
-                }
-            })  
-            setDocuments([...documents,result.data[0]])
-            onChangeText('')
-            } catch (error) {
-                console.error(error);
+    if(socket){
+        socket.on('message',(mensage) => {
+            if(mensage.id==1 && ip!=mensage.ip){
+                documents.filter((music)=>{
+                    if(music.name.includes(mensage.text)){
+                         socket.send({music, id: 2, type: "Musica encontrada", ip});
+                    } 
+                 })  
             }
-     }
-    
-    async function search() {
-        setMusicasProcuradas([])
-        const result =  await api.get(`/musics`)
-          {result.data.filter((music)=>{
-            if(music.name.includes(text)){
-                setMusicasProcuradas([...musicasProcuradas,music]) 
+            if(mensage.id==2){
+                setMusicasProcuradas([mensage.music])
             }
-          })}  
+        });  
     }
     
+     
+    async function download(){
+        setDocuments([...documents, musicasProcuradas[0]])
+        onChangeText('')
+    }
+    
+     function search() {
+        setMusicasProcuradas([])
+        socket.send({text, id: 1, type: "Procurar Musica", ip});
+        setNovaMensagem(true)
+    } 
     
     async function PickAudio(){
         try {
@@ -59,8 +60,7 @@ export function Home (){
                 multiple:true,
             });
             let fileBase64 = await FileSystem.readAsStringAsync(result.uri, { encoding: 'base64' });
-            api.post('/musics', {...result, data: fileBase64 })
-            setDocuments([...documents, result])  
+            setDocuments([...documents,result])  
         } catch (err) {
             console.log(err);
           }
@@ -72,13 +72,14 @@ export function Home (){
             <Search>
                 <SearchIcon>
                     <MaterialIcons
+                    onPress={search}
                         name='search'
                         size={25}
                         color={'white'}
                     />
                 </SearchIcon>
                 <TextContent>
-                    <TextInput value={text} style={{width:'100%',height:'100%', color:'white'}} placeholder='Pesquisar' placeholderTextColor={'white'}  onChangeText={onChangeText} onTextInput={search}/>
+                    <TextInput value={text} style={{width:'100%',height:'100%', color:'white'}} placeholder='Pesquisar' placeholderTextColor={'white'}  onChangeText={onChangeText} />
                 </TextContent>
             </Search> 
         </SContent>
@@ -126,7 +127,7 @@ export function Home (){
                         </View>
                         
                         <View  style={{marginLeft:'-13%',width:'100%',height:'100%', justifyContent:'center', alignItems:'start'}} >
-                          {item === undefined? null : <Button  color={'white'} title={item.name} onPress={()=>{download(item)}}/>}  
+                          {item === undefined? null : <Button  color={'white'} title={item.name} onPress={download}/>}  
                         </View>
                     </ButtonContainer>
                 // <Arquivo key = {i} style={{backgroundColor:'#023FAF'}} onClick={()=>{download(item)}}>
