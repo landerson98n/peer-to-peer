@@ -14,7 +14,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('message', (message) => {
-      io.emit('message',message);
+    io.emit('procurar musica',message);
+  });
+
+  socket.on('musica encontrada', (message) => {
+    console.log(message);
+    socket.emit('receber musica', message)
   });
 });
 

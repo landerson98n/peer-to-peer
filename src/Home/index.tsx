@@ -1,5 +1,5 @@
 import React ,{ useEffect, useState } from "react"
-import { Button, Text, TextInput, View} from "react-native"
+import { Button, Keyboard, Text, TextInput, View} from "react-native"
 import {MaterialIcons} from '@expo/vector-icons'
 import { Container, Search, ArquivosLocais, Arquivo,SContent ,SearchIcon, Enviar, ButtonContainer, TextContent } from './style'
 import { Entypo } from '@expo/vector-icons'; 
@@ -27,18 +27,19 @@ export function Home (){
     },[])
 
     if(socket){
-        socket.on('message',(mensage) => {
-            if(mensage.id==1){
+        socket.on('procurar musica',(mensage) => { 
                 const musics = documents.filter((music)=>{
                     if(music.name.includes(mensage.text)){
-                      return music  
-                    } 
-                 })  
-                socket.send({musics, id: 2, type: "Musica encontrada", ip});
-            }
-            if(mensage.id==2){
-                setMusicasProcuradas(mensage.musics)
-            }
+                          return music  
+                        } 
+                    })  
+                if(musics[0]){
+                    socket.emit('musica encontrada',{musics, ip: mensage.ip});
+                }  
+        });  
+
+        socket.on('receber musica',(mensage) => {
+           setMusicasProcuradas(mensage.musics)
         });  
     }
     
@@ -48,11 +49,12 @@ export function Home (){
         onChangeText('')
     }
     
-     function search() {
+    function search(){
         setMusicasProcuradas([])
-        socket.send({text, id: 1, type: "Procurar Musica", ip});
-        setNovaMensagem(true)
-    } 
+        if(socket && text){
+            socket.emit('message',{text, ip});
+        }
+    }
     
     async function PickAudio(){
         try {
@@ -73,14 +75,13 @@ export function Home (){
             <Search>
                 <SearchIcon>
                     <MaterialIcons
-                    onPress={search}
                         name='search'
                         size={25}
                         color={'white'}
                     />
                 </SearchIcon>
                 <TextContent>
-                    <TextInput value={text} style={{width:'100%',height:'100%', color:'white'}} placeholder='Pesquisar' placeholderTextColor={'white'}  onChangeText={onChangeText} />
+                    <TextInput onChange={search} style={{width:'100%',height:'100%', color:'white'}} placeholder='Pesquisar' placeholderTextColor={'white'}  onChangeText={onChangeText}/>
                 </TextContent>
             </Search> 
         </SContent>
