@@ -16,7 +16,7 @@ export function Home (){
     const [ip, setIp] = React.useState('');
     const [novaMensagem, setNovaMensagem] = React.useState(false);
     useEffect(() => {
-        setSocketOn(SocketIOClient('http://172.20.10.10:3333/', {
+        setSocketOn(SocketIOClient('http://192.168.0.16:3333/', {
             transports: ['websocket']
         }));
         async function getIp(){
@@ -28,15 +28,16 @@ export function Home (){
 
     if(socket){
         socket.on('message',(mensage) => {
-            if(mensage.id==1 && ip!=mensage.ip){
-                documents.filter((music)=>{
+            if(mensage.id==1){
+                const musics = documents.filter((music)=>{
                     if(music.name.includes(mensage.text)){
-                         socket.send({music, id: 2, type: "Musica encontrada", ip});
+                      return music  
                     } 
                  })  
+                socket.send({musics, id: 2, type: "Musica encontrada", ip});
             }
             if(mensage.id==2){
-                setMusicasProcuradas([mensage.music])
+                setMusicasProcuradas(mensage.musics)
             }
         });  
     }

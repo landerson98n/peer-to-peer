@@ -14,17 +14,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('message', (message) => {
-      console.log(message);
       io.emit('message',message);
   });
-  
 });
 
 app.get('/', (req, res) => {
     res.send('<h1>Hello world</h1>');
 });
 
-server.listen(3333,'172.20.10.10' ,() => {
+server.listen(3333,'192.168.0.16' ,() => {
   console.log('Server started on port 3333');
 });
 
